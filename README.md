@@ -16,6 +16,7 @@ working on it.
 
 To initial this skill, the user will utter any of the following keywords:
 
+  * "Mycroft, help"
   * "Mycroft, help me"
 
 More functions and keywords will be implemented in the near future.
