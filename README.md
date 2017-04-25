@@ -1,4 +1,4 @@
-# mycroft-skill-cbc-news
+# mycroft-skill-HelpMe
 A skill for MycroftAI that implements an internal help facility
 
 ## DESCRIPTION:
