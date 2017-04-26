@@ -26,14 +26,50 @@ LOGGER = getLogger(__name__)
 class HelpMeSkill(MycroftSkill):
     def __init__(self):
         super(HelpMeSkill, self).__init__(name="HelpMeSkill")
+        self.withRegex = ""
+        self.forRegex = ""
 
     def initialize(self):
+
+        # Intent for no regexs triggered
+
         help_me_intent = IntentBuilder("HelpMeIntent"). \
             require("HelpMeKeyword").build()
         self.register_intent(help_me_intent, self.handle_help_me_intent)
 
+        # Intent for withRexex triggered
+
+        intent = IntentBuilder("withRegexIntent").require("HelpMeKeyword") \
+            .optionally("withRegex").build()
+        self.register_intent(intent, self.handle_withRegex_intent)
+
+        # Intent for forRexex triggered
+
+        intent = IntentBuilder("forRegexIntent").require("HelpMeKeyword") \
+            .optionally("forRegex").build()
+        self.register_intent(intent, self.handle_forRegex_intent)
+
+    # No regex triggered
+
     def handle_help_me_intent(self, message):
         self.speak_dialog("help.me")
+
+    # withRegex triggered
+
+    def handle_withRegex_intent(self, message):
+        self.withRegex = str(message.data.get("withRegex"))  # optional parameter
+        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
+        if self.forRegex == 'None':
+            self.speak("no for regex")
+        else:
+            self.speak(self.forRegex)
+        self.speak_dialog('help.me.withRegex', {'withRegex': self.withRegex})
+
+    # forRegex triggered
+
+    def handle_forRegex_intent(self, message):
+        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
+        self.speak_dialog("help.me.forRegex")
 
     def stop(self):
         pass
