@@ -26,54 +26,103 @@ LOGGER = getLogger(__name__)
 class HelpMeSkill(MycroftSkill):
     def __init__(self):
         super(HelpMeSkill, self).__init__(name="HelpMeSkill")
-        self.withRegex = ""
-        self.forRegex = ""
 
     def initialize(self):
+        intent = IntentBuilder("HelpIntent").require(
+            "HelpMeKeyword").build()
+        self.register_intent(intent, self.help_intent)
 
-        # Intent for no regexs triggered
+        intent = IntentBuilder("SkillsIntent").require(
+            "SkillsKeyword").build()
+        self.register_intent(intent, self.handle_skills_intent)
 
-        help_me_intent = IntentBuilder("HelpMeIntent"). \
-            require("HelpMeKeyword").build()
-        self.register_intent(help_me_intent, self.handle_help_me_intent)
+        intent = IntentBuilder("CommandsIntent").require(
+            "CommandsKeyword").build()
+        self.register_intent(intent, self.handle_commands_intent)
 
-        # Intent for withRexex triggered
+    def help_intent(self, message):
+        self.speak("Say skill if you want help with a skill or commands if you want help with a command",
+            expect_response=True)
+        self.expecting_answer = True
+        self.counter = 0
+        self.choice =  None
+        self.asked = False
 
-        intent = IntentBuilder("withRegexIntent").require("HelpMeKeyword") \
-            .optionally("withRegex").build()
-        self.register_intent(intent, self.handle_withRegex_intent)
+    def handle_skills_intent(self, message):
+        self.speak("Say which skill want help with or list to list the available skills",
+            expect_response=True)
+        self.expecting_answer = True
+        self.counter = 0
+        self.choice =  None
+        self.asked = False
 
-        # Intent for forRexex triggered
+    def handle_commands_intent(self, message):
+        self.speak("Say which command you want help with, or list to list the available commands",
+            expect_response=True)
+        self.expecting_answer = True
+        self.counter = 0
+        self.choice =  None
+        self.asked = False
 
-        intent = IntentBuilder("forRegexIntent").require("HelpMeKeyword") \
-            .optionally("forRegex").build()
-        self.register_intent(intent, self.handle_forRegex_intent)
+    def converse(self, transcript):
+        utterance = transcript[0]
+        # probably better to call another method inside this so it isnt very crowded
+        if self.expecting_answer:
+            if "skill" in utterance:
+                self.expecting_answer = False
+                self.choice = "skill"
+                self.counter = 0
+                self.asked = True
+                self.speak("You said skill")
+            elif "command" in utterance:
+                self.expecting_answer = False
+                self.choice = "command"
+                self.counter = 0
+                self.speak("You said command")
+            elif counter >= 3 or "stop" in utterance:
+                self.speak("disabling help")
+                self.expecting_answer = False
+                self.choice = None
+                self.counter = 0
+                return False
+            else:
+                self.speak("try again")
+                self.counter += 1
+                self.choice = None
+                return True
 
-    # No regex triggered
+        if self.choice is not None:
+            self.speak("what skill you want help for")
+            self.asked = True
+            self.choice = None
+            self.counter = 0
+            return True
 
-    def handle_help_me_intent(self, message):
-        self.speak_dialog("help.me")
-
-    # withRegex triggered
-
-    def handle_withRegex_intent(self, message):
-        self.withRegex = str(message.data.get("withRegex"))  # optional parameter
-        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
-        if self.forRegex == 'None':
-            self.speak("no for regex")
-        else:
-            self.speak(self.forRegex)
-        self.speak_dialog('help.me.withRegex', {'withRegex': self.withRegex})
-
-    # forRegex triggered
-
-    def handle_forRegex_intent(self, message):
-        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
-        self.speak_dialog("help.me.forRegex")
+        if asked:
+            # TODO grab skill from utterance
+            # TODO check if skill name is a skill or invalid
+            if self.choice == "skill":
+                self.speak("skill help")
+                self.asked = False
+                self.counter = 0
+                self.choice = None
+                return True
+            elif self.choice == "command":
+                self.speak("command help")
+                self.asked = False
+                self.counter = 0
+                self.choice = None
+                return True
+            elif counter >= 3 or "stop" in utterance:
+                self.speak("disabling help")
+                self.asked = False 
+                self.counter = 0
+                self.choice = None
+                return False
+        return False
 
     def stop(self):
         pass
-
 
 def create_skill():
     return HelpMeSkill()
