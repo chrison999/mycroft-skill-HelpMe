@@ -18,6 +18,7 @@ from adapt.intent import IntentBuilder
 from mycroft.skills.core import MycroftSkill
 from mycroft.util.log import getLogger
 import os
+import json
 from os.path import dirname
 __author__ = 'chrison999'
 
@@ -37,7 +38,7 @@ class HelpMeSkill(MycroftSkill):
         self.build_layers()
         self.build_help()
 
-    def build_help(self):
+    def build_help(self, reset = False):
         SKILLS_DIR = dirname(dirname(__file__))
         # Scan the folder that contains Skills.
         list = filter(lambda x: os.path.isdir(
@@ -46,7 +47,7 @@ class HelpMeSkill(MycroftSkill):
         for skill_folder in list:
             path = os.path.join(SKILLS_DIR, skill_folder)
             # checking if help exists
-            if "help.json" not in os.listdir(path):
+            if "help.json" not in os.listdir(path) or reset:
                 # create help file
                 help = {}
                 help["skill_name"] = skill_folder.lower().replace("_"," ").replace("-"," ").replace("mycroft","").replace("skill","")
@@ -68,13 +69,22 @@ class HelpMeSkill(MycroftSkill):
                             for line in voc_file.readlines():
                                 parts = line.strip().split("|")
                                 entity = parts[0]
-                                help["commands"].setdefault(entity, "")
+                                if entity != "" and entity != " ":
+                                    help["commands"].setdefault(entity, "")
                 # TODO get regex commands
                 self.help_files.setdefault(skill_folder, help)
                 # TODO save help.json in skill folder
+                with open(path + "/help.json", 'w') as myfile:
+                    file_content = self.help_files[skill_folder]
+                    help = json.dumps(file_content)
+                    myfile.write(help)
+                    myfile.close()
+
             else:
-                # TODO load help file
-                self.help_files.setdefault(skill_folder, {})
+                with open(path + "/help.json", 'r') as myfile:
+                    file_content = myfile.read()
+                    help = json.loads(file_content)
+                self.help_files.setdefault(skill_folder, help)
 
     def build_layers(self):
         # activate different intents depending on query
