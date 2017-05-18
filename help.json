@@ -1,15 +1,12 @@
-{   "Help": {
-        "name":    "Mycroft Help Me Skill",
-        "description":    "A Mycroft skill that implements an internal help facility",
-        "commands": {
-            "Help": {
-                "command1":    "Help",
-                "command2":    "Help me"
-            }
-        },
-        "support": {
-            "email":    "chrison999@yahoo.ca",
-            "website":    "www.crazychris.ca/mycroft"
-        }
-    }
-}   
+{
+  "skill_name": "help",
+  "description": "no description provided for this skill", 
+  "intents": [
+    {"intent_keywords": ["HelpMeKeyword", "SkillName"], 
+    "intent_name": "HelpWithIntent", 
+    "intent_description": "no description provided"}
+    ],
+  "author": "chrison999", 
+  "support": {"website": "https://github.com/chrison999/mycroft-skill-HelpMe", "email": "not provided"}, 
+  "keywords": {"CommandsKeyword": ["commands"], "HelpMeKeyword": ["help", "help me"], "SkillsKeyword": ["skills"]}
+}
