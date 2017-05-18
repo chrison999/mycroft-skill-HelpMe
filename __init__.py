@@ -17,28 +17,85 @@ from adapt.intent import IntentBuilder
 
 from mycroft.skills.core import MycroftSkill
 from mycroft.util.log import getLogger
+from mycroft.messagebus.message import Message
 import os
 import json
 import subprocess
 from os.path import dirname
-__author__ = 'chrison999'
+from time import time , sleep
+
+__authors__ = ['chrison999', "jarbas"]
 
 logger = getLogger(__name__)
 
 SKILLS_DIR = dirname(dirname(__file__))
 
+
 class HelpMeSkill(MycroftSkill):
     def __init__(self):
         super(HelpMeSkill, self).__init__(name="HelpMeSkill")
-        self.withRegex = ""
-        self.forRegex = ""
+        self.reload_skill = False
         self.help_files = {} #skill_folder : help_json dict
+        self.loaded_skills = []  # [{"name":skill_name, "id":skill_id, "folder":skill_folder}] #if name = unloaded <- blacklisted or shutdown
+        self.time_out = 5
 
     def initialize(self):
+        self.emitter.on("register_vocab", self.handle_regex)
+        self.emitter.on("register_intent", self.handle_intent)
+        self.emitter.on("loaded_skills_response", self.handle_receive_loaded_skills)
+        self.get_loaded_skills()
         #self.layers = IntentLayers(self.emitter)
         self.build_intents()
         self.build_layers()
         self.build_help()
+        intent = IntentBuilder("HelpWithIntent").require("HelpMeKeyword").require("SkillName").build()
+        self.register_intent(intent, self.handle_help_me_with_intent)
+
+    def handle_help_me_with_intent(self, message):
+        skill = message.data["SkillName"]
+        help = self.get_skill_help(skill)
+        if help is None:
+            self.speak("no skill")
+        else:
+            for k in help:
+                print k, help[k]
+
+    def get_loaded_skills(self):
+        # asks main for loaded skill names, ids
+        self.emitter.emit(Message("loaded_skills_request", {}))
+        self.waiting = True
+        start_time = time()
+        t = 0
+        while self.waiting and t < self.time_out:
+            t = time() - start_time
+            sleep(0.1)
+        self.waiting = False
+
+    def handle_receive_loaded_skills(self, message):
+        self.loaded_skills = message.data["skills"]
+        self.skill_name_to_id = {}
+        for skill in self.loaded_skills:
+            self.skill_name_to_id[skill["name"].lower().replace("_", " ").replace(" skill", "").replace("skill", "")] = skill["id"]
+        self.waiting = False
+
+    def handle_intent(self, message):
+        keys = message.data["requires"]
+        keywords = []
+        for word in keys:
+            keywords.append(word[0])
+        skill_id, intent_name = message.data["name"].split(":")
+        intent_data = {"intent_name": intent_name, "intent_keywords": keywords, "intent_description": "no description provided"}
+        for skill in self.loaded_skills:
+            if skill["id"] == int(skill_id):
+                if intent_data not in self.help_files[skill["folder"]]["intents"]:
+                    self.help_files[skill["folder"]]["intents"].append(intent_data)
+
+    def handle_regex(self, message):
+        regex = message.data["regex"]
+        if regex is None:
+            return
+        # TODO process regex
+        #print regex
 
     def build_help(self, reset=True):
         # Scan the folder that contains Skills.
@@ -57,23 +114,101 @@ class HelpMeSkill(MycroftSkill):
                 # TODO merge missing fields instead of over-writing
                 self.help_files[skill_folder] = help
 
-            print self.help_files[skill_folder]
+    def get_possible_skill_names(self, name):
+        # try to make a ugly string into something pronounceable the user could have said
+        possible_names = [name.lower()]
+        # replace _ and - with spaces -> "Skill_HelpMe" becomes "Skill HelpMe"
+        name = name.replace("_", " ").replace("-", " ")
+        if name not in possible_names:
+            possible_names.append(name)
+        # put spaces wherever a big-case letter is found -> "Skill Help Me"
+        i = 0
+        for char in name:
+            if char.isupper() and i>0:
+                name = name[:i] + " " + name[i:]
+            i +=1
+        if name not in possible_names:
+            possible_names.append(name)
+        # make lower -> "skill help me"
+        name = name.lower()
+        if name not in possible_names:
+            possible_names.append(name)
+        # replace "skill" -> " help me"
+        name = name.replace("skill", "")
+        if name not in possible_names:
+            possible_names.append(name)
+        # if first or last char in string is " " remove -> "help me"
+        if name[0] == " ":
+            name = name[1:]
+            if name not in possible_names:
+                possible_names.append(name)
+        if name[-1] == " ":
+            name = name[:len(name)-1]
+            if name not in possible_names:
+                possible_names.append(name)
+        return possible_names
+
+    def get_skill_help(self, skill_string):
+        # this trys to manipulate the extracted string from regex and check against help files
+        # folders can be any combinations of uppercase lower case and can even have underscores or "skill" in the name
+        # this opens several possibilities of utterances that could be in regex asking for the skill
+        # check if id was provided get help directly, this most likely won't happen
+        if skill_string.isdigit():
+            for skill in self.loaded_skills:
+                if skill["id"] == int(skill_string):
+                    return self.help_files[skill["folder"]]
+
+        # process the string for common name possibilities to try
+        possible_names = self.get_possible_skill_names(skill_string)
+        for possible_name in possible_names:
+            # if the provided name matches a skill folder use it
+            if possible_name in self.help_files.keys():
+                return self.help_files[possible_name]
+
+        # process all skills folder names to be more pronounceable and see if they match this skill
+        for skill in self.loaded_skills:
+            possible_folders = self.get_possible_skill_names(skill["folder"])
+
+            for possible_name2 in possible_folders:
+                if possible_name2 in possible_names:
+                    return self.help_files[skill["folder"]]
+
+        # process all skills internal names to make more pronounceable see if they match this skill
+        for skill in self.loaded_skills:
+            if skill["name"] == "unloaded":
+                continue
+            p = self.get_possible_skill_names(skill["name"])
+            for possible_name2 in p:
+                if possible_name2 in possible_names:
+                    return self.help_files[skill["folder"]]
+        # TODO return some error, skill is not available most likely, maybe do some fuzzy matching for best option?
 
     def generate_basic_help(self, skill_folder):
         # this generates basic help files with all the info it can get from the skill folder
         path = os.path.join(SKILLS_DIR, skill_folder)
         help = {}
-        help["skill_name"] = skill_folder.lower().replace("_", " ").replace("-", " ").replace("mycroft",
-                                                                                              "").replace(
-            "skill", "")
-        if help["skill_name"][0] == " ":
-            help["skill_name"] = help["skill_name"][1:]
+        # Try to get name from loaded skills manifest
+        name = "unloaded"
+        for skill in self.loaded_skills:
+            if skill["folder"] == skill_folder:
+                name = skill["name"]
+        if name == "unloaded":
+            # turn folder name into a more user friendly / pronounceble name
+            help["skill_name"] = skill_folder.lower().replace("_", " ").replace("-", " ").replace("mycroft", "").replace("skill", "")
+            if help["skill_name"][0] == " ":
+                help["skill_name"] = help["skill_name"][1:]
+        else:
+            help["skill_name"] = name
         help["description"] = "no description provided for this skill"
         try:
             website = subprocess.check_output(["git", "remote", "-v"], cwd=path)
             website = website.replace("origin\t", "").replace(" (fetch)", "").split("\n")[0]
+            author = website.replace("https://github.com/", "")
+            author = author[:author.find("/")]
         except:
             website = "not provided"
+            author = "unknown"
+        help["author"] = author
         help["support"] = {"email": "not provided", "website": website}
         help["keywords"] = {}  # keyword : "utterance"
         help["intents"] = [] #{"intent_name":name, "intent_decription":desceiption, "intent_keywords":[keyword list]}
@@ -117,45 +252,8 @@ class HelpMeSkill(MycroftSkill):
         pass
 
     def build_intents(self):
-        # Intent for no regexs triggered
-
-        help_me_intent = IntentBuilder("HelpMeIntent"). \
-            require("HelpMeKeyword").build()
-        self.register_intent(help_me_intent, self.handle_help_me_intent)
-
-        # Intent for withRexex triggered
-
-        intent = IntentBuilder("withRegexIntent").require("HelpMeKeyword") \
-            .optionally("withRegex").build()
-        self.register_intent(intent, self.handle_withRegex_intent)
-
-        # Intent for forRexex triggered
-
-        intent = IntentBuilder("forRegexIntent").require("HelpMeKeyword") \
-            .optionally("forRegex").build()
-        self.register_intent(intent, self.handle_forRegex_intent)
-
-    # No regex triggered
-
-    def handle_help_me_intent(self, message):
-        self.speak_dialog("help.me")
-
-    # withRegex triggered
-
-    def handle_withRegex_intent(self, message):
-        self.withRegex = str(message.data.get("withRegex"))  # optional parameter
-        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
-        if self.forRegex == 'None':
-            self.speak("no for regex")
-        else:
-            self.speak(self.forRegex)
-        self.speak_dialog('help.me.withRegex', {'withRegex': self.withRegex})
-
-    # forRegex triggered
-
-    def handle_forRegex_intent(self, message):
-        self.forRegex = str(message.data.get("forRegex"))  # optional parameter
-        self.speak_dialog("help.me.forRegex")
+        # make intents
+        pass
 
     def stop(self):
         pass
