@@ -9,12 +9,18 @@ the user can obtain help on how to operate Mycroft and any skills.
 
 ## CURRENT STATE:
 
-Under development. Requires https://github.com/MycroftAI/mycroft-core/pull/756
+Under development.
 
 - auto generates help for all skills
 - read help from file
 - missing interactive dialog
 
+Requires [PR#756](https://github.com/MycroftAI/mycroft-core/pull/756) to
+
+- add help skill to priority skills in order to not miss register_intent messages
+- get loaded skills from main (for skill name and id)
+
+Will most likely use IntentChains and [Converse method](https://github.com/MycroftAI/mycroft-core/pull/783) for dialog state
 
 
 generated help files contain
