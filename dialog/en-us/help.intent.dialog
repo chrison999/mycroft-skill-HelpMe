@@ -1,0 +1,1 @@
+{{ intent_name }}, {{ intent_description }}, to activate this intent you can use the following keywords {{ keywords }}
