@@ -99,19 +99,19 @@ class HelpMeSkill(MycroftSkill):
         if len(intents) > 0:
             for intent in intents:
                 kwords = intent["intent_keywords"]
-                self.speak("Keywords for " + intent["intent_name"], metadata={"more": True})
+                self.speak("Keywords for " + intent["intent_name"])#, metadata={"more": True})
                 for kword in kwords:
                     words = ""
                     for w in keywords[kword]:
                         words += w + ", "
-                    self.speak_dialog("help.command", {"kword": kword, "samples": words}, metadata={"more": True})
-                self.speak(" ")
+                    self.speak_dialog("help.command", {"kword": kword, "samples": words})#, metadata={"more": True})
+                #self.speak(" ")
         else:
             for w in keywords:
                 words = ""
                 for word in keywords[w]:
                     words += word + ", "
-                self.speak_dialog("help.command", {"kword": w, "samples": words}, metadata={"more": True})
+                self.speak_dialog("help.command", {"kword": w, "samples": words})#, metadata={"more": True})
 
     def handle_description_help_intent(self, message):
         skill = self.get_skill_folder(self.current_help_skill)
@@ -127,14 +127,14 @@ class HelpMeSkill(MycroftSkill):
         help = self.read_help(skill)
         intents = help["intents"]
         if len(intents) > 0:
-            self.speak("The following intents are available", metadata={"more":True})
+            self.speak("The following intents are available")#, metadata={"more":True})
             for intent in intents:
                 words = ""
                 for w in intent["intent_keywords"]:
                     words += w + ", "
                 self.speak_dialog("help.intent", {"intent_name":intent["intent_name"], "keywords": words,
-                                             "description": intent["intent_description"]}, metadata={"more":True})
-            self.speak(" ")
+                                             "description": intent["intent_description"]})#, metadata={"more":True})
+            #self.speak(" ")
         else:
             self.speak("I don't know what intents belong to this skill")
 
