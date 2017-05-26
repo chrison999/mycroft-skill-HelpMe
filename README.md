@@ -9,24 +9,32 @@ the user can obtain help on how to operate Mycroft and any skills.
 
 ## CURRENT STATE:
 
-Under development. Requires https://github.com/MycroftAI/mycroft-core/pull/756 , this skill should be a priority skill to laod first and catch all register intent_messages, it also uses the loaded skills manifest function from that PR
+Under development. Requires https://github.com/MycroftAI/mycroft-core/pull/756
 
-- auto generates help for all skills with available info
+- auto generates help for all skills
 - read help from file
+- missing interactive dialog
 
-generated help files contain, 
-- intents this skill triggers, required leywords and placeholder description of each intent, 
-- utterances that correspond to each keyword, #TODO regex
-- github link, author name (from github link), placeholder contact field
-- placeholder skill description
-- skill name
+
+
+generated help files contain
+
+        intents this skill triggers, required leywords and placeholder description of each intent,
+        utterances that correspond to each keyword, #TODO regex
+        github link, author name (from github link), placeholder contact field
+        placeholder skill description
+        skill name
+
 
 ## USAGE:
 
 To initial this skill, the user will utter any of the following keywords:
 
-  * "Mycroft, help"
-  * "Mycroft, help me"
+- help me with skill_name <- will give options for help about this skill <- do this before other commands!
+- help me with skill <- info about previous skill
+- help me with commands <- info about previous skill's commands/ keywords
+- help me with intents <- info about previous skill's intents
+
 
 More functions and keywords will be implemented in the near future.
 
